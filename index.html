@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="cs" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniCalc FX - Pokročilá Grafická & Vědecká Kalkulačka</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            400: '#22d3ee',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            700: '#0e7490',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #0f172a 60%, #090d16 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body.light {
+            background: radial-gradient(circle at 50% 20%, #e0f2fe 0%, #f1f5f9 60%, #cbd5e1 100%);
+            color: #0f172a;
+        }
+
+        .font-mono-code {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .light .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+
+        .glass-btn {
+            position: relative;
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+            border-color: rgba(6, 182, 212, 0.4);
+        }
+
+        .glass-btn:active {
+            transform: translateY(1px) scale(0.97);
+            box-shadow: 0 0 5px rgba(6, 182, 212, 0.5);
+        }
+
+        .light .glass-btn {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: #1e293b;
+        }
+
+        .light .glass-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 4px 20px rgba(8, 145, 178, 0.2);
+            border-color: rgba(8, 145, 178, 0.3);
+        }
+
+        /* Ripple Effect */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple-animation 0.5s linear;
+            background-color: rgba(255, 255, 255, 0.4);
+            pointer-events: none;
+        }
+
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Glow Animations */
+        @keyframes calc-flash {
+            0% { box-shadow: 0 0 0px rgba(6, 182, 212, 0); }
+            50% { box-shadow: 0 0 35px rgba(6, 182, 212, 0.8), inset 0 0 15px rgba(6, 182, 212, 0.4); }
+            100% { box-shadow: 0 0 0px rgba(6, 182, 212, 0); }
+        }
+
+        .calc-success-glow {
+            animation: calc-flash 0.6s ease-out;
+        }
+
+        /* Canvas Particle Canvas Overlay */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 9999px;
+        }
+        .light ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col transition-colors duration-300 relative">
+
+    <!-- Particle Overlay -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Navigation Header -->
+    <header class="w-full border-b border-white/10 glass-panel sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-cyan-500/20 text-cyan-400 rounded-xl border border-cyan-500/30 shadow-lg shadow-cyan-500/20">
+                    <i data-lucide="calculator" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide text-white light:text-slate-800 flex items-center gap-2">
+                        OmniCalc <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-normal">FX Ultra</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 light:text-slate-500">Vědecká, Grafická & Matematická Aplikace</p>
+                </div>
+            </div>
+
+            <!-- Global Controls -->
+            <div class="flex items-center space-x-3">
+                <button id="sound-toggle-btn" onclick="toggleAudio()" class="px-3 py-1.5 text-xs font-semibold rounded-xl glass-btn text-cyan-300 flex items-center space-x-1.5" title="Zapnout/Vypnout Zvuk">
+                    <i data-lucide="volume-2" id="sound-icon" class="w-4 h-4"></i>
+                    <span id="sound-status-text">Zvuk Zap</span>
+                </button>
+
+                <button id="deg-rad-btn" onclick="toggleDegRad()" class="px-3 py-1.5 text-xs font-semibold rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30 transition shadow-sm">
+                    DEG
+                </button>
+
+                <button id="theme-toggle" onclick="toggleTheme()" class="p-2 rounded-xl glass-btn text-slate-300 hover:text-white" title="Přepnout Téma">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+
+        <!-- Navigation Tabs -->
+        <div class="lg:col-span-12 flex space-x-2 border-b border-white/10 pb-2 overflow-x-auto">
+            <button onclick="switchTab('calc')" id="tab-calc" class="tab-btn active px-4 py-2 rounded-xl text-sm font-medium flex items-center space-x-2 bg-cyan-500 text-white shadow-lg shadow-cyan-500/30 transition-all">
+                <i data-lucide="calculator" class="w-4 h-4"></i>
+                <span>Kalkulačka</span>
+            </button>
+            <button onclick="switchTab('graph')" id="tab-graph" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium flex items-center space-x-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                <i data-lucide="line-chart" class="w-4 h-4"></i>
+                <span>2D Grafy Funkcí</span>
+            </button>
+            <button onclick="switchTab('solver')" id="tab-solver" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium flex items-center space-x-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                <i data-lucide="binary" class="w-4 h-4"></i>
+                <span>Řešič Rovnic</span>
+            </button>
+            <button onclick="switchTab('matrix')" id="tab-matrix" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium flex items-center space-x-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                <i data-lucide="grid" class="w-4 h-4"></i>
+                <span>Matice</span>
+            </button>
+            <button onclick="switchTab('converter')" id="tab-converter" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium flex items-center space-x-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+                <span>Převodník</span>
+            </button>
+        </div>
+
+        <!-- Left Interactive View Area -->
+        <div class="lg:col-span-8 flex flex-col space-y-4">
+
+            <!-- TAB 1: SCIENTIFIC CALCULATOR -->
+            <div id="view-calc" class="view-panel space-y-4">
+                <div id="calc-display-container" class="glass-panel p-5 rounded-2xl flex flex-col justify-between shadow-2xl relative overflow-hidden min-h-[140px] transition-all duration-300">
+                    <div id="memory-indicator" class="text-xs text-amber-400 font-semibold h-4 tracking-wider flex items-center gap-1"></div>
+                    <div id="calc-history-display" class="text-right text-slate-400 text-sm min-h-[24px] overflow-x-auto whitespace-nowrap font-mono-code"></div>
+                    <input type="text" id="calc-input" class="w-full bg-transparent text-right text-3xl md:text-4xl font-bold font-mono-code focus:outline-none text-white light:text-slate-800 tracking-wide mt-2" placeholder="0" readonly>
+                </div>
+
+                <!-- Memory Keys -->
+                <div class="grid grid-cols-5 gap-2">
+                    <button onclick="handleMemory('MC')" class="glass-btn py-1.5 rounded-lg text-xs font-medium text-amber-400 hover:bg-amber-400/10">MC</button>
+                    <button onclick="handleMemory('MR')" class="glass-btn py-1.5 rounded-lg text-xs font-medium text-amber-400 hover:bg-amber-400/10">MR</button>
+                    <button onclick="handleMemory('M+')" class="glass-btn py-1.5 rounded-lg text-xs font-medium text-amber-400 hover:bg-amber-400/10">M+</button>
+                    <button onclick="handleMemory('M-')" class="glass-btn py-1.5 rounded-lg text-xs font-medium text-amber-400 hover:bg-amber-400/10">M-</button>
+                    <button onclick="handleMemory('MS')" class="glass-btn py-1.5 rounded-lg text-xs font-medium text-amber-400 hover:bg-amber-400/10">MS</button>
+                </div>
+
+                <!-- Keypad -->
+                <div class="grid grid-cols-5 gap-2">
+                    <button onclick="appendInput('sin(')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">sin</button>
+                    <button onclick="appendInput('cos(')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">cos</button>
+                    <button onclick="appendInput('tan(')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">tan</button>
+                    <button onclick="appendInput('asin(')" class="glass-btn p-3 rounded-xl text-xs font-medium text-cyan-300">asin</button>
+                    <button onclick="appendInput('acos(')" class="glass-btn p-3 rounded-xl text-xs font-medium text-cyan-300">acos</button>
+
+                    <button onclick="appendInput('atan(')" class="glass-btn p-3 rounded-xl text-xs font-medium text-cyan-300">atan</button>
+                    <button onclick="appendInput('log(')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">log10</button>
+                    <button onclick="appendInput('ln(')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">ln</button>
+                    <button onclick="appendInput('^')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">x^y</button>
+                    <button onclick="appendInput('sqrt(')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">√x</button>
+
+                    <button onclick="appendInput('cbrt(')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">∛x</button>
+                    <button onclick="appendInput('!')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">x!</button>
+                    <button onclick="appendInput('pi')" class="glass-btn p-3 rounded-xl text-sm font-medium text-purple-300">π</button>
+                    <button onclick="appendInput('e')" class="glass-btn p-3 rounded-xl text-sm font-medium text-purple-300">e</button>
+                    <button onclick="appendInput('%')" class="glass-btn p-3 rounded-xl text-sm font-medium text-slate-300">%</button>
+
+                    <button onclick="clearCalc()" class="glass-btn p-3 rounded-xl text-sm font-bold bg-rose-500/20 text-rose-300 hover:bg-rose-500/30">AC</button>
+                    <button onclick="deleteLast()" class="glass-btn p-3 rounded-xl text-sm font-bold bg-amber-500/20 text-amber-300 hover:bg-amber-500/30">DEL</button>
+                    <button onclick="appendInput('(')" class="glass-btn p-3 rounded-xl text-sm font-medium text-slate-300">(</button>
+                    <button onclick="appendInput(')')" class="glass-btn p-3 rounded-xl text-sm font-medium text-slate-300">)</button>
+                    <button onclick="appendInput('/')" class="glass-btn p-4 rounded-xl text-lg font-bold bg-cyan-500/20 text-cyan-300">÷</button>
+
+                    <button onclick="appendInput('7')" class="glass-btn p-4 rounded-xl text-lg font-bold">7</button>
+                    <button onclick="appendInput('8')" class="glass-btn p-4 rounded-xl text-lg font-bold">8</button>
+                    <button onclick="appendInput('9')" class="glass-btn p-4 rounded-xl text-lg font-bold">9</button>
+                    <button onclick="appendInput('*')" class="glass-btn p-4 rounded-xl text-lg font-bold bg-cyan-500/20 text-cyan-300">×</button>
+                    <button onclick="appendInput('abs(')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">|x|</button>
+
+                    <button onclick="appendInput('4')" class="glass-btn p-4 rounded-xl text-lg font-bold">4</button>
+                    <button onclick="appendInput('5')" class="glass-btn p-4 rounded-xl text-lg font-bold">5</button>
+                    <button onclick="appendInput('6')" class="glass-btn p-4 rounded-xl text-lg font-bold">6</button>
+                    <button onclick="appendInput('-')" class="glass-btn p-4 rounded-xl text-lg font-bold bg-cyan-500/20 text-cyan-300">−</button>
+                    <button onclick="appendInput('1/(')" class="glass-btn p-3 rounded-xl text-sm font-medium text-cyan-300">1/x</button>
+
+                    <button onclick="appendInput('1')" class="glass-btn p-4 rounded-xl text-lg font-bold">1</button>
+                    <button onclick="appendInput('2')" class="glass-btn p-4 rounded-xl text-lg font-bold">2</button>
+                    <button onclick="appendInput('3')" class="glass-btn p-4 rounded-xl text-lg font-bold">3</button>
+                    <button onclick="appendInput('+')" class="glass-btn p-4 rounded-xl text-lg font-bold bg-cyan-500/20 text-cyan-300">+</button>
+                    <button onclick="toggleSign()" class="glass-btn p-4 rounded-xl text-lg font-bold">±</button>
+
+                    <button onclick="appendInput('0')" class="glass-btn p-4 rounded-xl text-lg font-bold col-span-2">0</button>
+                    <button onclick="appendInput('.')" class="glass-btn p-4 rounded-xl text-lg font-bold">.</button>
+                    <button id="btn-equals" onclick="calculateResult(event)" class="glass-btn p-4 rounded-xl text-lg font-bold bg-cyan-500 text-white shadow-lg shadow-cyan-500/30 hover:bg-cyan-600 border-none col-span-2 flex items-center justify-center relative overflow-hidden">=</button>
+                </div>
+            </div>
+
+            <!-- TAB 2: CANVAS GRAPHING ENGINE -->
+            <div id="view-graph" class="view-panel hidden space-y-4">
+                <div class="glass-panel p-4 rounded-2xl flex flex-wrap gap-3 items-center justify-between">
+                    <div class="flex-1 min-w-[220px] flex items-center space-x-2">
+                        <span class="text-sm font-mono text-cyan-400 font-bold">f(x) =</span>
+                        <input type="text" id="graph-expr" value="sin(x) * 2" class="w-full bg-slate-800/80 border border-white/10 rounded-lg px-3 py-1.5 text-sm font-mono-code focus:outline-none focus:border-cyan-500 text-white" placeholder="např. sin(x), x^2 - 4">
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button onclick="drawGraph()" class="px-4 py-1.5 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-lg text-sm transition shadow-md shadow-cyan-500/20">
+                            Vykreslit
+                        </button>
+                        <select id="preset-select" onchange="loadPreset(this.value)" class="bg-slate-800 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none">
+                            <option value="">Vzory funkcí...</option>
+                            <option value="sin(x)">sin(x)</option>
+                            <option value="x^2 - 4">x² - 4</option>
+                            <option value="cos(x) * x">cos(x) * x</option>
+                            <option value="tan(x)">tan(x)</option>
+                            <option value="1 / x">1 / x</option>
+                            <option value="abs(x) - 2">|x| - 2</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-2 rounded-2xl relative overflow-hidden flex flex-col items-center">
+                    <div class="w-full flex items-center justify-between px-3 py-1 text-xs text-slate-400">
+                        <span>Posun: Drag / Myš | Zoom: Kolečko / Tlačítka</span>
+                        <div class="flex space-x-2">
+                            <button onclick="zoomGraph(1.2)" class="px-2 py-1 bg-white/10 rounded hover:bg-white/20">+ Zoom</button>
+                            <button onclick="zoomGraph(0.8)" class="px-2 py-1 bg-white/10 rounded hover:bg-white/20">- Zoom</button>
+                            <button onclick="resetGraphView()" class="px-2 py-1 bg-cyan-500/20 text-cyan-300 rounded hover:bg-cyan-500/30">Reset</button>
+                        </div>
+                    </div>
+                    <canvas id="custom-graph-canvas" class="w-full h-[380px] rounded-xl bg-slate-950/80 cursor-crosshair border border-white/5"></canvas>
+                </div>
+            </div>
+
+            <!-- TAB 3: EQUATION SOLVER -->
+            <div id="view-solver" class="view-panel hidden space-y-4">
+                <div class="glass-panel p-6 rounded-2xl space-y-6">
+                    <h2 class="text-lg font-bold text-cyan-400 flex items-center space-x-2">
+                        <i data-lucide="binary" class="w-5 h-5"></i>
+                        <span>Matematický Řešič Rovnic</span>
+                    </h2>
+
+                    <!-- Kvadratická rovnice -->
+                    <div class="bg-white/5 p-5 rounded-xl border border-white/10 space-y-4">
+                        <h3 class="font-semibold text-sm text-slate-200">1. Kvadratická rovnice (a·x² + b·x + c = 0)</h3>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="text-xs text-slate-400">Koeficient a</label>
+                                <input type="number" id="quad-a" value="1" class="w-full bg-slate-800/80 border border-white/10 rounded-lg p-2 text-sm font-mono-code focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400">Koeficient b</label>
+                                <input type="number" id="quad-b" value="-5" class="w-full bg-slate-800/80 border border-white/10 rounded-lg p-2 text-sm font-mono-code focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400">Koeficient c</label>
+                                <input type="number" id="quad-c" value="6" class="w-full bg-slate-800/80 border border-white/10 rounded-lg p-2 text-sm font-mono-code focus:outline-none">
+                            </div>
+                        </div>
+                        <button onclick="solveQuadratic()" class="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition shadow-md shadow-cyan-500/20">
+                            Vyřešit rovnici
+                        </button>
+                        <div id="quad-result" class="text-sm font-mono-code p-3 bg-slate-900/60 rounded-lg border border-white/5 min-h-[40px] text-cyan-300"></div>
+                    </div>
+
+                    <!-- Soustava 2 rovnic -->
+                    <div class="bg-white/5 p-5 rounded-xl border border-white/10 space-y-4">
+                        <h3 class="font-semibold text-sm text-slate-200">2. Soustava 2 lineárních rovnic (a·x + b·y = c)</h3>
+                        <div class="grid grid-cols-3 gap-3">
+                            <input type="number" id="sys-a1" value="2" placeholder="a1" class="bg-slate-800/80 border border-white/10 rounded-lg p-2 text-sm font-mono-code">
+                            <input type="number" id="sys-b1" value="1" placeholder="b1" class="bg-slate-800/80 border border-white/10 rounded-lg p-2 text-sm font-mono-code">
+                            <input type="number" id="sys-c1" value="5" placeholder="c1" class="bg-slate-800/80 border border-white/10 rounded-lg p-2 text-sm font-mono-code">
+
+                            <input type="number" id="sys-a2" value="1" placeholder="a2" class="bg-slate-800/80 border border-white/10 rounded-lg p-2 text-sm font-mono-code">
+                            <input type="number" id="sys-b2" value="-1" placeholder="b2" class="bg-slate-800/80 border border-white/10 rounded-lg p-2 text-sm font-mono-code">
+                            <input type="number" id="sys-c2" value="1" placeholder="c2" class="bg-slate-800/80 border border-white/10 rounded-lg p-2 text-sm font-mono-code">
+                        </div>
+                        <button onclick="solveLinearSystem()" class="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition shadow-md shadow-cyan-500/20">
+                            Vyřešit soustavu
+                        </button>
+                        <div id="sys-result" class="text-sm font-mono-code p-3 bg-slate-900/60 rounded-lg border border-white/5 min-h-[40px] text-cyan-300"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: MATRIX CALCULATOR -->
+            <div id="view-matrix" class="view-panel hidden space-y-4">
+                <div class="glass-panel p-6 rounded-2xl space-y-6">
+                    <h2 class="text-lg font-bold text-cyan-400 flex items-center space-x-2">
+                        <i data-lucide="grid" class="w-5 h-5"></i>
+                        <span>Maticový Kalkulátor (2x2)</span>
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Matice A -->
+                        <div class="space-y-2 bg-white/5 p-4 rounded-xl border border-white/10">
+                            <label class="block text-xs text-slate-400">Matice A</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="m-a11" value="1" class="bg-slate-800/80 border border-white/10 rounded p-2 text-center text-sm font-mono-code">
+                                <input type="number" id="m-a12" value="2" class="bg-slate-800/80 border border-white/10 rounded p-2 text-center text-sm font-mono-code">
+                                <input type="number" id="m-a21" value="3" class="bg-slate-800/80 border border-white/10 rounded p-2 text-center text-sm font-mono-code">
+                                <input type="number" id="m-a22" value="4" class="bg-slate-800/80 border border-white/10 rounded p-2 text-center text-sm font-mono-code">
+                            </div>
+                        </div>
+
+                        <!-- Matice B -->
+                        <div class="space-y-2 bg-white/5 p-4 rounded-xl border border-white/10">
+                            <label class="block text-xs text-slate-400">Matice B</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="m-b11" value="5" class="bg-slate-800/80 border border-white/10 rounded p-2 text-center text-sm font-mono-code">
+                                <input type="number" id="m-b12" value="6" class="bg-slate-800/80 border border-white/10 rounded p-2 text-center text-sm font-mono-code">
+                                <input type="number" id="m-b21" value="7" class="bg-slate-800/80 border border-white/10 rounded p-2 text-center text-sm font-mono-code">
+                                <input type="number" id="m-b22" value="8" class="bg-slate-800/80 border border-white/10 rounded p-2 text-center text-sm font-mono-code">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="calcMatrix('add')" class="px-3 py-1.5 bg-cyan-500/20 text-cyan-300 rounded-lg text-xs font-medium hover:bg-cyan-500/30">A + B</button>
+                        <button onclick="calcMatrix('sub')" class="px-3 py-1.5 bg-cyan-500/20 text-cyan-300 rounded-lg text-xs font-medium hover:bg-cyan-500/30">A - B</button>
+                        <button onclick="calcMatrix('mul')" class="px-3 py-1.5 bg-cyan-500/20 text-cyan-300 rounded-lg text-xs font-medium hover:bg-cyan-500/30">A × B</button>
+                        <button onclick="calcMatrix('detA')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium hover:bg-purple-500/30">det(A)</button>
+                        <button onclick="calcMatrix('invA')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium hover:bg-purple-500/30">A⁻¹</button>
+                    </div>
+
+                    <div id="matrix-result" class="text-sm font-mono-code p-4 bg-slate-900/60 rounded-lg border border-white/5 min-h-[60px] text-cyan-300"></div>
+                </div>
+            </div>
+
+            <!-- TAB 5: UNIT CONVERTER -->
+            <div id="view-converter" class="view-panel hidden space-y-4">
+                <div class="glass-panel p-6 rounded-2xl space-y-6">
+                    <h2 class="text-lg font-bold text-cyan-400 flex items-center space-x-2">
+                        <i data-lucide="arrow-left-right" class="w-5 h-5"></i>
+                        <span>Univerzální Převodník Jednotek</span>
+                    </h2>
+
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Kategorie</label>
+                        <select id="conv-category" onchange="updateConverterUnits()" class="w-full bg-slate-800/80 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none text-white">
+                            <option value="length">Délka</option>
+                            <option value="mass">Hmotnost</option>
+                            <option value="temp">Teplota</option>
+                            <option value="data">Data / Paměť</option>
+                            <option value="angle">Úhly</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div class="space-y-2 bg-white/5 p-4 rounded-xl border border-white/10">
+                            <label class="block text-xs text-slate-400">Z hodnota</label>
+                            <input type="number" id="conv-val-from" value="1" oninput="convertUnits()" class="w-full bg-slate-800/80 border border-white/10 rounded-xl p-3 text-xl font-bold font-mono-code focus:outline-none text-white">
+                            <select id="conv-unit-from" onchange="convertUnits()" class="w-full bg-slate-800/80 border border-white/10 rounded-xl p-2 text-sm focus:outline-none text-white"></select>
+                        </div>
+
+                        <div class="space-y-2 bg-white/5 p-4 rounded-xl border border-white/10">
+                            <label class="block text-xs text-slate-400">Na hodnotu</label>
+                            <input type="number" id="conv-val-to" readonly class="w-full bg-slate-800/80 border border-white/10 rounded-xl p-3 text-xl font-bold font-mono-code text-cyan-400 focus:outline-none">
+                            <select id="conv-unit-to" onchange="convertUnits()" class="w-full bg-slate-800/80 border border-white/10 rounded-xl p-2 text-sm focus:outline-none text-white"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Side Panel: Calculation History -->
+        <div class="lg:col-span-4 space-y-4">
+            <div class="glass-panel p-5 rounded-2xl flex flex-col h-full min-h-[500px]">
+                <div class="flex items-center justify-between pb-4 border-b border-white/10">
+                    <h2 class="font-bold text-slate-200 flex items-center space-x-2">
+                        <i data-lucide="history" class="w-4 h-4 text-cyan-400"></i>
+                        <span>Historie výpočtů</span>
+                    </h2>
+                    <button onclick="clearHistory()" class="text-xs text-rose-400 hover:text-rose-300 transition">Vymazat</button>
+                </div>
+
+                <div id="history-list" class="flex-1 overflow-y-auto my-4 space-y-2 pr-1 max-h-[500px]">
+                    <div class="text-center text-xs text-slate-500 py-8">Žádná historie výpočtů</div>
+                </div>
+
+                <div class="pt-4 border-t border-white/10 grid grid-cols-2 gap-2">
+                    <button onclick="exportHistory('csv')" class="glass-btn py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center space-x-1 text-slate-300 hover:text-white">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span>CSV Export</span>
+                    </button>
+                    <button onclick="exportHistory('json')" class="glass-btn py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center space-x-1 text-slate-300 hover:text-white">
+                        <i data-lucide="file-json" class="w-3.5 h-3.5"></i>
+                        <span>JSON Export</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- JavaScript Core System & Math Logic -->
+    <script>
+        // --- CUSTOM MATH PARSER & EVALUATOR (No External Library Dependency) ---
+        function parseMathExpression(expr, variables = {}) {
+            let clean = expr.trim().toLowerCase();
+
+            // Replace mathematical constants
+            clean = clean.replace(/\bpi\b/g, Math.PI);
+            clean = clean.replace(/\be\b/g, Math.E);
+
+            // Replace implicit multiplication like 2x -> 2*x, 3sin(x) -> 3*sin(x)
+            clean = clean.replace(/(\d)\s*([a-z\(])/g, '$1*$2');
+            clean = clean.replace(/(\))s*(\d|[a-z])/g, '$1*$2');
+
+            // Tokenize
+            function evaluateTokens(str, vars) {
+                // Replace variable values
+                for (let v in vars) {
+                    const reg = new RegExp('\\b' + v + '\\b', 'g');
+                    str = str.replace(reg, '(' + vars[v] + ')');
+                }
+
+                // Handle Functions recursively
+                const fnMap = {
+                    'sin': Math.sin,
+                    'cos': Math.cos,
+                    'tan': Math.tan,
+                    'asin': Math.asin,
+                    'acos': Math.acos,
+                    'atan': Math.atan,
+                    'sqrt': Math.sqrt,
+                    'cbrt': Math.cbrt,
+                    'log': Math.log10,
+                    'ln': Math.log,
+                    'abs': Math.abs,
+                    'exp': Math.exp
+                };
+
+                // Recursive function parsing
+                let fnFound = true;
+                while (fnFound) {
+                    fnFound = false;
+                    for (let fn in fnMap) {
+                        const idx = str.indexOf(fn + '(');
+                        if (idx !== -1) {
+                            let openCount = 0;
+                            let closeIdx = -1;
+                            for (let i = idx + fn.length; i < str.length; i++) {
+                                if (str[i] === '(') openCount++;
+                                if (str[i] === ')') openCount--;
+                                if (openCount === 0) {
+                                    closeIdx = i;
+                                    break;
+                                }
+                            }
+                            if (closeIdx !== -1) {
+                                const inner = str.substring(idx + fn.length + 1, closeIdx);
+                                const val = fnMap[fn](evaluateTokens(inner, vars));
+                                str = str.substring(0, idx) + val + str.substring(closeIdx + 1);
+                                fnFound = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Power Operator ^
+                while (str.includes('^')) {
+                    str = str.replace(/(-?\d+\.?\d*)\s*\^\s*(-?\d+\.?\d*)/, (m, p1, p2) => Math.pow(parseFloat(p1), parseFloat(p2)));
+                }
+
+                // Safe JS evaluation for remaining simple mathematical expression
+                try {
+                    // Sanitize against dangerous strings
+                    if (/[^0-9\+\-\*\/\.\(\)\s,eE]/.test(str)) {
+                        return NaN;
+                    }
+                    return Function('"use strict"; return (' + str + ')')();
+                } catch (e) {
+                    return NaN;
+                }
+            }
+
+            return evaluateTokens(clean, variables);
+        }
+
+        // --- WEB AUDIO API SYNTHESIZER ---
+        let audioCtx = null;
+        let isAudioEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleAudio() {
+            isAudioEnabled = !isAudioEnabled;
+            const statusText = document.getElementById('sound-status-text');
+            const statusIcon = document.getElementById('sound-icon');
+
+            if (isAudioEnabled) {
+                statusText.innerText = 'Zvuk Zap';
+                statusIcon.setAttribute('data-lucide', 'volume-2');
+                playSound('click');
+            } else {
+                statusText.innerText = 'Zvuk Vyp';
+                statusIcon.setAttribute('data-lucide', 'volume-x');
+            }
+            lucide.createIcons();
+        }
+
+        function playSound(type) {
+            if (!isAudioEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'click') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(120, now + 0.05);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            }
+            else if (type === 'success') {
+                const freqs = [523.25, 659.25, 783.99, 1046.50];
+                freqs.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+                    gain.gain.setValueAtTime(0.08, now + idx * 0.04);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35 + idx * 0.04);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + idx * 0.04);
+                    osc.stop(now + 0.4 + idx * 0.04);
+                });
+            }
+            else if (type === 'error') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.setValueAtTime(110, now + 0.08);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+            else if (type === 'clear') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.12);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            }
+        }
+
+        // --- PARTICLE BURST ENGINE ---
+        const particleCanvas = document.getElementById('particle-canvas');
+        const pCtx = particleCanvas.getContext('2d');
+        let particles = [];
+
+        function resizeParticleCanvas() {
+            particleCanvas.width = window.innerWidth;
+            particleCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeParticleCanvas);
+        resizeParticleCanvas();
+
+        function createParticleBurst(x, y) {
+            const colors = ['#06b6d4', '#3b82f6', '#a855f7', '#ec4899', '#f59e0b', '#10b981'];
+            const count = 40;
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 6 + 2;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: Math.random() * 4 + 2,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: 1,
+                    decay: Math.random() * 0.03 + 0.015
+                });
+            }
+        }
+
+        function animateParticles() {
+            pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.12;
+                p.alpha -= p.decay;
+
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    pCtx.save();
+                    pCtx.globalAlpha = p.alpha;
+                    pCtx.fillStyle = p.color;
+                    pCtx.beginPath();
+                    pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    pCtx.fill();
+                    pCtx.restore();
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // --- CALCULATOR INTERFACE & CORE ---
+        let calcInput = document.getElementById('calc-input');
+        let calcHistoryDisplay = document.getElementById('calc-history-display');
+        let calcDisplayContainer = document.getElementById('calc-display-container');
+        let memoryValue = 0;
+        let isRadMode = false;
+        let calculationHistory = [];
+
+        lucide.createIcons();
+
+        function switchTab(tabId) {
+            playSound('click');
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-cyan-500', 'text-white', 'shadow-lg', 'shadow-cyan-500/30');
+                btn.classList.add('text-slate-400');
+            });
+            document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
+
+            const selectedBtn = document.getElementById(`tab-${tabId}`);
+            const selectedView = document.getElementById(`view-${tabId}`);
+
+            if (selectedBtn && selectedView) {
+                selectedBtn.classList.add('bg-cyan-500', 'text-white', 'shadow-lg', 'shadow-cyan-500/30');
+                selectedBtn.classList.remove('text-slate-400');
+                selectedView.classList.remove('hidden');
+            }
+
+            if (tabId === 'graph') {
+                setTimeout(drawGraph, 50);
+            }
+        }
+
+        function toggleDegRad() {
+            isRadMode = !isRadMode;
+            const btn = document.getElementById('deg-rad-btn');
+            btn.innerText = isRadMode ? 'RAD' : 'DEG';
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light');
+            document.documentElement.classList.toggle('dark');
+        }
+
+        function appendInput(val) {
+            calcInput.value += val;
+        }
+
+        function clearCalc() {
+            playSound('clear');
+            calcInput.value = '';
+            calcHistoryDisplay.innerText = '';
+        }
+
+        function deleteLast() {
+            calcInput.value = calcInput.value.slice(0, -1);
+        }
+
+        function toggleSign() {
+            if (calcInput.value.startsWith('-')) {
+                calcInput.value = calcInput.value.substring(1);
+            } else if (calcInput.value.length > 0) {
+                calcInput.value = '-' + calcInput.value;
+            }
+        }
+
+        function calculateResult(event) {
+            const rawExpr = calcInput.value;
+            if (!rawExpr.trim()) return;
+
+            try {
+                let parsedExpr = rawExpr;
+
+                if (!isRadMode) {
+                    parsedExpr = parsedExpr.replace(/(sin|cos|tan)\(([^)]+)\)/g, (m, fn, arg) => {
+                        return `${fn}((${arg}) * ${Math.PI / 180})`;
+                    });
+                }
+
+                const res = parseMathExpression(parsedExpr);
+
+                if (isNaN(res) || res === undefined) throw new Error('Invalid');
+
+                const numericResult = Number(res.toFixed(10));
+
+                playSound('success');
+
+                let burstX = window.innerWidth / 2;
+                let burstY = window.innerHeight / 3;
+                if (event && event.clientX) {
+                    burstX = event.clientX;
+                    burstY = event.clientY;
+                }
+                createParticleBurst(burstX, burstY);
+
+                calcDisplayContainer.classList.remove('calc-success-glow');
+                void calcDisplayContainer.offsetWidth;
+                calcDisplayContainer.classList.add('calc-success-glow');
+
+                calcInput.value = numericResult;
+                calcHistoryDisplay.innerText = `${rawExpr} =`;
+                addHistoryItem(rawExpr, numericResult);
+
+            } catch (err) {
+                playSound('error');
+                calcInput.value = 'Chyba!';
+                setTimeout(() => { calcInput.value = ''; }, 1500);
+            }
+        }
+
+        function handleMemory(action) {
+            const currentVal = parseFloat(calcInput.value) || 0;
+            const memInd = document.getElementById('memory-indicator');
+
+            switch (action) {
+                case 'MC':
+                    memoryValue = 0;
+                    memInd.innerText = '';
+                    break;
+                case 'MR':
+                    calcInput.value = memoryValue;
+                    break;
+                case 'M+':
+                    memoryValue += currentVal;
+                    memInd.innerHTML = 'M (Aktivní)';
+                    break;
+                case 'M-':
+                    memoryValue -= currentVal;
+                    memInd.innerHTML = 'M (Aktivní)';
+                    break;
+                case 'MS':
+                    memoryValue = currentVal;
+                    memInd.innerHTML = 'M (Aktivní)';
+                    break;
+            }
+        }
+
+        function addHistoryItem(expr, result) {
+            calculationHistory.unshift({ expr, result, timestamp: new Date().toLocaleTimeString() });
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            if (calculationHistory.length === 0) {
+                container.innerHTML = '<div class="text-center text-xs text-slate-500 py-8">Žádná historie výpočtů</div>';
+                return;
+            }
+
+            container.innerHTML = calculationHistory.map((item) => `
+                <div onclick="useHistoryItem('${item.result}')" class="p-3 bg-white/5 hover:bg-white/10 rounded-xl cursor-pointer border border-white/5 transition">
+                    <div class="text-xs text-slate-400 font-mono-code">${item.expr}</div>
+                    <div class="text-sm font-bold text-slate-200 font-mono-code text-right mt-1">= ${item.result}</div>
+                </div>
+            `).join('');
+        }
+
+        function useHistoryItem(val) {
+            playSound('click');
+            calcInput.value = val;
+        }
+
+        function clearHistory() {
+            playSound('clear');
+            calculationHistory = [];
+            renderHistory();
+        }
+
+        function exportHistory(type) {
+            if (calculationHistory.length === 0) return;
+            let dataStr = "";
+            let filename = `history_${new Date().toISOString().slice(0, 10)}`;
+
+            if (type === 'json') {
+                dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(calculationHistory, null, 2));
+                filename += ".json";
+            } else {
+                let csvContent = "Timestamp,Vyraz,Vysledek\n";
+                calculationHistory.forEach(r => {
+                    csvContent += `"${r.timestamp}","${r.expr}","${r.result}"\n`;
+                });
+                dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+                filename += ".csv";
+            }
+
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", filename);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // --- REAL-TIME CUSTOM CANVAS GRAPHING ENGINE ---
+        const graphCanvas = document.getElementById('custom-graph-canvas');
+        const gCtx = graphCanvas.getContext('2d');
+
+        let graphScale = 40; // Pixels per unit
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+        function resizeGraphCanvas() {
+            const rect = graphCanvas.getBoundingClientRect();
+            graphCanvas.width = rect.width;
+            graphCanvas.height = rect.height;
+            drawGraph();
+        }
+        window.addEventListener('resize', resizeGraphCanvas);
+
+        function drawGraph() {
+            if (!graphCanvas.width || !graphCanvas.height) {
+                const rect = graphCanvas.getBoundingClientRect();
+                graphCanvas.width = rect.width || 600;
+                graphCanvas.height = rect.height || 380;
+            }
+
+            const width = graphCanvas.width;
+            const height = graphCanvas.height;
+            const centerX = width / 2 + offsetX;
+            const centerY = height / 2 + offsetY;
+
+            // Background
+            gCtx.fillStyle = '#020617';
+            gCtx.fillRect(0, 0, width, height);
+
+            // Draw Grid Lines
+            gCtx.lineWidth = 1;
+            gCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            gCtx.fillStyle = '#64748b';
+            gCtx.font = '10px Fira Code';
+
+            const startX = Math.floor((-centerX) / graphScale);
+            const endX = Math.ceil((width - centerX) / graphScale);
+
+            for (let x = startX; x <= endX; x++) {
+                const canvasX = centerX + x * graphScale;
+                gCtx.beginPath();
+                gCtx.moveTo(canvasX, 0);
+                gCtx.lineTo(canvasX, height);
+                gCtx.stroke();
+
+                if (x !== 0) {
+                    gCtx.fillText(x, canvasX + 2, centerY + 12);
+                }
+            }
+
+            const startY = Math.floor((centerY - height) / graphScale);
+            const endY = Math.ceil(centerY / graphScale);
+
+            for (let y = startY; y <= endY; y++) {
+                const canvasY = centerY - y * graphScale;
+                gCtx.beginPath();
+                gCtx.moveTo(0, canvasY);
+                gCtx.lineTo(width, canvasY);
+                gCtx.stroke();
+
+                if (y !== 0) {
+                    gCtx.fillText(y, centerX + 4, canvasY - 2);
+                }
+            }
+
+            // Axes X & Y
+            gCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            gCtx.lineWidth = 2;
+
+            gCtx.beginPath();
+            gCtx.moveTo(0, centerY);
+            gCtx.lineTo(width, centerY);
+            gCtx.stroke();
+
+            gCtx.beginPath();
+            gCtx.moveTo(centerX, 0);
+            gCtx.lineTo(centerX, height);
+            gCtx.stroke();
+
+            // Draw Function Plot
+            const expr = document.getElementById('graph-expr').value;
+            if (!expr.trim()) return;
+
+            gCtx.strokeStyle = '#22d3ee';
+            gCtx.lineWidth = 2.5;
+            gCtx.beginPath();
+
+            let isFirstPoint = true;
+
+            for (let px = 0; px <= width; px += 2) {
+                const mathX = (px - centerX) / graphScale;
+                try {
+                    const mathY = parseMathExpression(expr, { x: mathX });
+
+                    if (typeof mathY === 'number' && !isNaN(mathY) && isFinite(mathY)) {
+                        const py = centerY - mathY * graphScale;
+                        if (isFirstPoint) {
+                            gCtx.moveTo(px, py);
+                            isFirstPoint = false;
+                        } else {
+                            gCtx.lineTo(px, py);
+                        }
+                    } else {
+                        isFirstPoint = true;
+                    }
+                } catch (e) {
+                    isFirstPoint = true;
+                }
+            }
+            gCtx.stroke();
+        }
+
+        // Mouse Drag & Zoom Events for Graph
+        graphCanvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragStartX = e.clientX - offsetX;
+            dragStartY = e.clientY - offsetY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                offsetX = e.clientX - dragStartX;
+                offsetY = e.clientY - dragStartY;
+                drawGraph();
+            }
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        graphCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                graphScale *= 1.1;
+            } else {
+                graphScale *= 0.9;
+            }
+            drawGraph();
+        });
+
+        function zoomGraph(factor) {
+            graphScale *= factor;
+            drawGraph();
+        }
+
+        function resetGraphView() {
+            graphScale = 40;
+            offsetX = 0;
+            offsetY = 0;
+            drawGraph();
+        }
+
+        function loadPreset(val) {
+            if (val) {
+                document.getElementById('graph-expr').value = val;
+                drawGraph();
+            }
+        }
+
+        // --- MATRIX OPERATIONS ---
+        function calcMatrix(op) {
+            playSound('click');
+            const a11 = parseFloat(document.getElementById('m-a11').value) || 0;
+            const a12 = parseFloat(document.getElementById('m-a12').value) || 0;
+            const a21 = parseFloat(document.getElementById('m-a21').value) || 0;
+            const a22 = parseFloat(document.getElementById('m-a22').value) || 0;
+
+            const b11 = parseFloat(document.getElementById('m-b11').value) || 0;
+            const b12 = parseFloat(document.getElementById('m-b12').value) || 0;
+            const b21 = parseFloat(document.getElementById('m-b21').value) || 0;
+            const b22 = parseFloat(document.getElementById('m-b22').value) || 0;
+
+            const res = document.getElementById('matrix-result');
+
+            if (op === 'add') {
+                res.innerHTML = `A + B =<br>[ ${a11+b11}, ${a12+b12} ]<br>[ ${a21+b21}, ${a22+b22} ]`;
+            } else if (op === 'sub') {
+                res.innerHTML = `A - B =<br>[ ${a11-b11}, ${a12-b12} ]<br>[ ${a21-b21}, ${a22-b22} ]`;
+            } else if (op === 'mul') {
+                const c11 = a11*b11 + a12*b21;
+                const c12 = a11*b12 + a12*b22;
+                const c21 = a21*b11 + a22*b21;
+                const c22 = a21*b12 + a22*b22;
+                res.innerHTML = `A × B =<br>[ ${c11}, ${c12} ]<br>[ ${c21}, ${c22} ]`;
+            } else if (op === 'detA') {
+                const det = a11*a22 - a12*a21;
+                res.innerHTML = `Determinant det(A) = ${det}`;
+            } else if (op === 'invA') {
+                const det = a11*a22 - a12*a21;
+                if (det === 0) {
+                    res.innerHTML = `Matice A nemůže mít inverzi (det(A) = 0)`;
+                } else {
+                    res.innerHTML = `A⁻¹ =<br>[ ${(a22/det).toFixed(3)}, ${(-a12/det).toFixed(3)} ]<br>[ ${(-a21/det).toFixed(3)}, ${(a11/det).toFixed(3)} ]`;
+                }
+            }
+        }
+
+        // --- CONVERTER UNITS ---
+        const unitData = {
+            length: { m: 1, km: 1000, cm: 0.01, mm: 0.001, inch: 0.0254, ft: 0.3048, yd: 0.9144, mi: 1609.34 },
+            mass: { kg: 1, g: 0.001, mg: 0.000001, lb: 0.453592, oz: 0.0283495 },
+            data: { B: 1, KB: 1024, MB: 1048576, GB: 1073741824, TB: 1099511627776 },
+            angle: { deg: 1, rad: 57.2958, grad: 0.9 }
+        };
+
+        function updateConverterUnits() {
+            const cat = document.getElementById('conv-category').value;
+            const selectFrom = document.getElementById('conv-unit-from');
+            const selectTo = document.getElementById('conv-unit-to');
+
+            selectFrom.innerHTML = '';
+            selectTo.innerHTML = '';
+
+            if (cat === 'temp') {
+                ['Celsius', 'Fahrenheit', 'Kelvin'].forEach(unit => {
+                    selectFrom.innerHTML += `<option value="${unit}">${unit}</option>`;
+                    selectTo.innerHTML += `<option value="${unit}">${unit}</option>`;
+                });
+                selectTo.selectedIndex = 1;
+            } else {
+                Object.keys(unitData[cat]).forEach(unit => {
+                    selectFrom.innerHTML += `<option value="${unit}">${unit}</option>`;
+                    selectTo.innerHTML += `<option value="${unit}">${unit}</option>`;
+                });
+                selectTo.selectedIndex = 1;
+            }
+            convertUnits();
+        }
+
+        function convertUnits() {
+            const cat = document.getElementById('conv-category').value;
+            const valFrom = parseFloat(document.getElementById('conv-val-from').value) || 0;
+            const unitFrom = document.getElementById('conv-unit-from').value;
+            const unitTo = document.getElementById('conv-unit-to').value;
+            const valToInput = document.getElementById('conv-val-to');
+
+            if (cat === 'temp') {
+                let celsius = valFrom;
+                if (unitFrom === 'Fahrenheit') celsius = (valFrom - 32) * 5 / 9;
+                if (unitFrom === 'Kelvin') celsius = valFrom - 273.15;
+
+                let result = celsius;
+                if (unitTo === 'Fahrenheit') result = (celsius * 9 / 5) + 32;
+                if (unitTo === 'Kelvin') result = celsius + 273.15;
+
+                valToInput.value = result.toFixed(4);
+            } else {
+                const baseVal = valFrom * unitData[cat][unitFrom];
+                const result = baseVal / unitData[cat][unitTo];
+                valToInput.value = result.toFixed(6);
+            }
+        }
+
+        // --- SOLVERS ---
+        function solveQuadratic() {
+            playSound('click');
+            const a = parseFloat(document.getElementById('quad-a').value);
+            const b = parseFloat(document.getElementById('quad-b').value);
+            const c = parseFloat(document.getElementById('quad-c').value);
+            const res = document.getElementById('quad-result');
+
+            if (isNaN(a) || isNaN(b) || isNaN(c)) {
+                res.innerText = 'Zadejte platná čísla.';
+                return;
+            }
+
+            if (a === 0) {
+                res.innerText = 'Koeficient "a" nesmí být 0.';
+                return;
+            }
+
+            const disc = b * b - 4 * a * c;
+
+            if (disc > 0) {
+                const x1 = (-b + Math.sqrt(disc)) / (2 * a);
+                const x2 = (-b - Math.sqrt(disc)) / (2 * a);
+                res.innerText = `D = ${disc}\nx₁ = ${x1.toFixed(4)}\nx₂ = ${x2.toFixed(4)}`;
+            } else if (disc === 0) {
+                const x = -b / (2 * a);
+                res.innerText = `D = 0\nx = ${x.toFixed(4)}`;
+            } else {
+                const realPart = (-b / (2 * a)).toFixed(4);
+                const imagPart = (Math.sqrt(-disc) / (2 * a)).toFixed(4);
+                res.innerText = `D = ${disc} (Komplexní kořeny)\nx₁ = ${realPart} + ${imagPart}i\nx₂ = ${realPart} - ${imagPart}i`;
+            }
+        }
+
+        function solveLinearSystem() {
+            playSound('click');
+            const a1 = parseFloat(document.getElementById('sys-a1').value);
+            const b1 = parseFloat(document.getElementById('sys-b1').value);
+            const c1 = parseFloat(document.getElementById('sys-c1').value);
+
+            const a2 = parseFloat(document.getElementById('sys-a2').value);
+            const b2 = parseFloat(document.getElementById('sys-b2').value);
+            const c2 = parseFloat(document.getElementById('sys-c2').value);
+
+            const res = document.getElementById('sys-result');
+
+            const D = a1 * b2 - a2 * b1;
+            const Dx = c1 * b2 - c2 * b1;
+            const Dy = a1 * c2 - a2 * c1;
+
+            if (D === 0) {
+                if (Dx === 0 && Dy === 0) {
+                    res.innerText = 'Soustava má nekonečně mnoho řešení.';
+                } else {
+                    res.innerText = 'Soustava nemá žádné řešení.';
+                }
+            } else {
+                const x = Dx / D;
+                const y = Dy / D;
+                res.innerText = `x = ${x.toFixed(4)}\ny = ${y.toFixed(4)}`;
+            }
+        }
+
+        window.onload = function() {
+            updateConverterUnits();
+            solveQuadratic();
+            solveLinearSystem();
+            resizeGraphCanvas();
+        }
+    </script>
+</body>
+</html>
